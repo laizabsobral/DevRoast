@@ -1,7 +1,16 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ['@takumi-rs/core'],
+  reactCompiler: false,
+  cacheComponents: true,
+  cacheLife: {
+    hourly: {
+      stale: 3600,
+      revalidate: 3600,
+      expire: 86400,
+    },
+  },
 };
 
 export default nextConfig;
