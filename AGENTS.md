@@ -27,3 +27,6 @@ Next.js 15 com App Router, Tailwind CSS, TypeScript.
 
 - Syntax highlighting com Shiki (tema Vesper)
 - CodeEditor usa padrão de composição (CodeEditorRoot, CodeEditorHeader, CodeEditorContent)
+- Textarea overlay com highlight em tempo real
+- Auto-detecção de linguagem via highlight.js (pendente)
+- Scroll sync entre textarea e div de highlight

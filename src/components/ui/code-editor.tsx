@@ -1,8 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { createHighlighter, type Highlighter } from 'shiki';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tv } from 'tailwind-variants';
+import { useLanguageDetection } from '@/hooks/use-language-detection';
+import { useShikiHighlighter } from '@/hooks/use-shiki-highlighter';
+import {
+  getLanguageByHljsId,
+  getLanguageName,
+  LANGUAGE_OPTIONS,
+} from '@/lib/languages';
 
 const codeEditor = tv({
   base: [
@@ -10,55 +16,13 @@ const codeEditor = tv({
   ],
 });
 
-const languageOptions = [
-  'javascript',
-  'typescript',
-  'python',
-  'go',
-  'rust',
-  'java',
-  'c',
-  'cpp',
-  'csharp',
-  'php',
-  'ruby',
-  'swift',
-  'kotlin',
-  'scala',
-  'html',
-  'css',
-  'scss',
-  'json',
-  'yaml',
-  'xml',
-  'markdown',
-  'sql',
-  'bash',
-  'shell',
-  'powershell',
-  'dockerfile',
-  'graphql',
-  'lua',
-  'perl',
-  'r',
-  'matlab',
-  'julia',
-  'elixir',
-  'erlang',
-  'haskell',
-  'clojure',
-  'fsharp',
-  'ocaml',
-  'dart',
-  'lua',
-];
-
 interface CodeEditorProps {
   value?: string;
   onChange?: (value: string) => void;
   language?: string;
   onLanguageChange?: (language: string) => void;
   showLanguageSelector?: boolean;
+  showDetectedBadge?: boolean;
   className?: string;
 }
 
@@ -74,29 +38,49 @@ export function CodeEditorRoot({
 
 export function CodeEditorHeader({
   language,
+  detectedLanguage,
   onLanguageChange,
   showLanguageSelector = true,
+  showDetectedBadge = true,
 }: {
   language?: string;
+  detectedLanguage?: string | null;
   onLanguageChange?: (language: string) => void;
   showLanguageSelector?: boolean;
+  showDetectedBadge?: boolean;
 }) {
+  const displayLanguage = language || detectedLanguage || 'plaintext';
+  const isAutoDetected = !language && !!detectedLanguage;
+
   return (
     <div className="flex h-10 items-center justify-between border-b border-border-primary px-4">
       <div className="flex items-center gap-3">
         <span className="h-2.5 w-2.5 rounded-full bg-accent-red" />
         <span className="h-2.5 w-2.5 rounded-full bg-accent-amber" />
         <span className="h-2.5 w-2.5 rounded-full bg-accent-green" />
+        {showDetectedBadge && isAutoDetected && (
+          <span className="ml-2 rounded bg-accent-green/20 px-2 py-0.5 font-mono text-[10px] text-accent-green">
+            {getLanguageName(detectedLanguage || 'plaintext')}
+          </span>
+        )}
+        {showDetectedBadge &&
+          !isAutoDetected &&
+          displayLanguage !== 'plaintext' && (
+            <span className="ml-2 rounded bg-bg-elevated px-2 py-0.5 font-mono text-[10px] text-text-tertiary">
+              {getLanguageName(displayLanguage)}
+            </span>
+          )}
       </div>
       {showLanguageSelector && (
         <select
-          value={language}
+          value={language || ''}
           onChange={(e) => onLanguageChange?.(e.target.value)}
           className="bg-transparent font-mono text-xs text-text-tertiary focus:outline-none"
         >
-          {languageOptions.map((lang) => (
-            <option key={lang} value={lang}>
-              {lang}
+          <option value="">Auto-detect</option>
+          {LANGUAGE_OPTIONS.map((lang) => (
+            <option key={lang.value} value={lang.value}>
+              {lang.label}
             </option>
           ))}
         </select>
@@ -108,7 +92,7 @@ export function CodeEditorHeader({
 export function CodeEditorContent({
   value,
   onChange,
-  language = 'javascript',
+  language = 'plaintext',
   className,
 }: {
   value?: string;
@@ -116,43 +100,43 @@ export function CodeEditorContent({
   language?: string;
   className?: string;
 }) {
+  const { highlight, isReady, loadLanguage } = useShikiHighlighter();
   const [highlightedCode, setHighlightedCode] = useState('');
-  const highlighterRef = useRef<Highlighter | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const lines = (value || '').split('\n').length;
 
-  useEffect(() => {
-    async function initHighlighter() {
-      if (!highlighterRef.current) {
-        highlighterRef.current = await createHighlighter({
-          themes: ['vesper'],
-          langs: languageOptions,
-        });
+  const doHighlight = useCallback(
+    async (code: string, lang: string) => {
+      if (!isReady || !code) {
+        setHighlightedCode('');
+        return;
       }
-    }
-    initHighlighter();
-  }, []);
 
-  const highlightCode = useCallback(async (code: string, lang: string) => {
-    if (!highlighterRef.current) return code;
-
-    try {
-      const html = highlighterRef.current.codeToHtml(code, {
-        lang,
-        theme: 'vesper',
-      });
-      return html;
-    } catch {
-      return code;
-    }
-  }, []);
+      await loadLanguage(lang);
+      const html = await highlight(code, lang);
+      setHighlightedCode(html);
+    },
+    [highlight, isReady, loadLanguage]
+  );
 
   useEffect(() => {
-    const code = value || '';
-    highlightCode(code, language).then(setHighlightedCode);
-  }, [value, language, highlightCode]);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      doHighlight(value || '', language);
+    }, 50);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [value, language, doHighlight]);
 
   const handleScroll = useCallback(() => {
     if (textareaRef.current && preRef.current) {
@@ -201,22 +185,38 @@ export function CodeEditorContent({
 export function CodeEditor({
   value,
   onChange,
-  language = 'javascript',
+  language,
   onLanguageChange,
   showLanguageSelector = true,
+  showDetectedBadge = true,
   className,
 }: CodeEditorProps) {
+  const { language: detectedLanguage } = useLanguageDetection(value || '');
+
+  const effectiveLanguage = useMemo(() => {
+    if (language) {
+      return language;
+    }
+    if (detectedLanguage) {
+      const mapped = getLanguageByHljsId(detectedLanguage);
+      return mapped || 'plaintext';
+    }
+    return 'plaintext';
+  }, [language, detectedLanguage]);
+
   return (
     <CodeEditorRoot className={className}>
       <CodeEditorHeader
         language={language}
+        detectedLanguage={detectedLanguage}
         onLanguageChange={onLanguageChange}
         showLanguageSelector={showLanguageSelector}
+        showDetectedBadge={showDetectedBadge}
       />
       <CodeEditorContent
         value={value}
         onChange={onChange}
-        language={language}
+        language={effectiveLanguage}
       />
     </CodeEditorRoot>
   );
