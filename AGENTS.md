@@ -21,3 +21,9 @@ Next.js 15 com App Router, Tailwind CSS, TypeScript.
 - `npm run dev` - desenvolvimento
 - `npm run build` - build produção
 - `npm run lint` - lint
+- `npm run format` - formatação
+
+## Editor
+
+- Syntax highlighting com Shiki (tema Vesper)
+- CodeEditor usa padrão de composição (CodeEditorRoot, CodeEditorHeader, CodeEditorContent)

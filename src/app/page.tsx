@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { CodeInput } from '@/components/ui/code-input';
+import { CodeEditor } from '@/components/ui/code-editor';
 import {
   TableRowCode,
   TableRowLang,
@@ -55,11 +55,7 @@ export default function HomePage() {
       </div>
 
       {/* Code Editor */}
-      <CodeInput
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        rows={15}
-      />
+      <CodeEditor value={code} onChange={setCode} className="w-[780px]" />
 
       {/* Actions Bar */}
       <div className="flex w-[780px] items-center justify-between">
