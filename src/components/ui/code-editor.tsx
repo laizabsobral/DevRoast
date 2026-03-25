@@ -219,7 +219,14 @@ export function CodeEditor({
   showDetectedBadge = true,
   className,
 }: CodeEditorProps) {
-  const { language: detectedLanguage } = useLanguageDetection(value || '');
+  const [mounted, setMounted] = useState(false);
+  const { language: detectedLanguage } = useLanguageDetection(
+    mounted ? value || '' : ''
+  );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const effectiveLanguage = useMemo(() => {
     if (language) {
@@ -236,7 +243,7 @@ export function CodeEditor({
     <CodeEditorRoot className={className}>
       <CodeEditorHeader
         language={language}
-        detectedLanguage={detectedLanguage}
+        detectedLanguage={mounted ? detectedLanguage : null}
         onLanguageChange={onLanguageChange}
         showLanguageSelector={showLanguageSelector}
         showDetectedBadge={showDetectedBadge}
