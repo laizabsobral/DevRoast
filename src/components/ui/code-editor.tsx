@@ -11,6 +11,8 @@ import {
   LANGUAGE_OPTIONS,
 } from '@/lib/languages';
 
+const MAX_CHARACTERS = 2000;
+
 const codeEditor = tv({
   base: [
     'w-full min-h-[200px] max-h-[400px] overflow-hidden rounded-md border border-border-primary bg-bg-input font-mono text-sm',
@@ -35,6 +37,24 @@ export function CodeEditorRoot({
   className?: string;
 }) {
   return <div className={codeEditor({ className })}>{children}</div>;
+}
+
+export function CodeEditorFooter({
+  charCount,
+  maxCharacters = MAX_CHARACTERS,
+}: {
+  charCount: number;
+  maxCharacters?: number;
+}) {
+  const isOverLimit = charCount > maxCharacters;
+
+  return (
+    <div className="flex h-8 items-center justify-end border-t border-border-primary px-4 font-mono text-xs">
+      <span className={isOverLimit ? 'text-accent-red' : 'text-text-tertiary'}>
+        {charCount.toLocaleString()} / {maxCharacters.toLocaleString()}
+      </span>
+    </div>
+  );
 }
 
 export function CodeEditorHeader({
@@ -239,6 +259,9 @@ export function CodeEditor({
     return 'plaintext';
   }, [language, detectedLanguage]);
 
+  const charCount = value?.length ?? 0;
+  const isOverLimit = charCount > MAX_CHARACTERS;
+
   return (
     <CodeEditorRoot className={className}>
       <CodeEditorHeader
@@ -253,6 +276,9 @@ export function CodeEditor({
         onChange={onChange}
         language={effectiveLanguage}
       />
+      <CodeEditorFooter charCount={charCount} />
     </CodeEditorRoot>
   );
 }
+
+export { MAX_CHARACTERS };
