@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tv } from 'tailwind-variants';
 import { useLanguageDetection } from '@/hooks/use-language-detection';
@@ -72,18 +73,21 @@ export function CodeEditorHeader({
           )}
       </div>
       {showLanguageSelector && (
-        <select
-          value={language || ''}
-          onChange={(e) => onLanguageChange?.(e.target.value)}
-          className="bg-transparent font-mono text-xs text-text-tertiary focus:outline-none"
-        >
-          <option value="">Auto-detect</option>
-          {LANGUAGE_OPTIONS.map((lang) => (
-            <option key={lang.value} value={lang.value}>
-              {lang.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={language || ''}
+            onChange={(e) => onLanguageChange?.(e.target.value)}
+            className="appearance-none rounded border border-border-primary bg-bg-elevated px-3 py-1.5 pr-8 font-mono text-xs text-text-secondary focus:border-accent-green focus:outline-none focus:ring-1 focus:ring-accent-green"
+          >
+            <option value="">Auto-detect</option>
+            {LANGUAGE_OPTIONS.map((lang) => (
+              <option key={lang.value} value={lang.value}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+        </div>
       )}
     </div>
   );
@@ -102,6 +106,7 @@ export function CodeEditorContent({
 }) {
   const { highlight, isReady, loadLanguage } = useShikiHighlighter();
   const [highlightedCode, setHighlightedCode] = useState('');
+  const [isHighlighted, setIsHighlighted] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -112,12 +117,14 @@ export function CodeEditorContent({
     async (code: string, lang: string) => {
       if (!isReady || !code) {
         setHighlightedCode('');
+        setIsHighlighted(false);
         return;
       }
 
       await loadLanguage(lang);
       const html = await highlight(code, lang);
       setHighlightedCode(html);
+      setIsHighlighted(true);
     },
     [highlight, isReady, loadLanguage]
   );
@@ -129,7 +136,7 @@ export function CodeEditorContent({
 
     debounceRef.current = setTimeout(() => {
       doHighlight(value || '', language);
-    }, 50);
+    }, 0);
 
     return () => {
       if (debounceRef.current) {
@@ -137,6 +144,12 @@ export function CodeEditorContent({
       }
     };
   }, [value, language, doHighlight]);
+
+  useEffect(() => {
+    if (value && isReady && !isHighlighted) {
+      doHighlight(value, language);
+    }
+  }, [isReady, value, language, isHighlighted, doHighlight]);
 
   const handleScroll = useCallback(() => {
     if (textareaRef.current && preRef.current) {
@@ -158,19 +171,34 @@ export function CodeEditorContent({
 
       {/* Editor Area */}
       <div className="relative flex-1 overflow-hidden">
-        {/* Highlighted Code Layer */}
+        {/* Highlighted Code Layer (only visible when ready) */}
         <pre
           ref={preRef}
-          className="absolute inset-0 overflow-auto p-3 text-sm leading-6 [&_pre]:!bg-transparent [&_span]:!text-text-secondary"
+          className={`absolute inset-0 overflow-auto p-3 text-sm leading-6 [&_pre]:!bg-transparent [&_span]:!text-text-secondary ${
+            isHighlighted ? 'opacity-100' : 'opacity-0'
+          }`}
           aria-hidden="true"
           dangerouslySetInnerHTML={{ __html: highlightedCode }}
         />
+
+        {/* Plain text fallback (visible when not highlighted) */}
+        <pre
+          className={`absolute inset-0 overflow-auto p-3 text-sm leading-6 text-text-secondary ${
+            isHighlighted ? 'opacity-0' : 'opacity-100'
+          }`}
+          aria-hidden="true"
+        >
+          {value || ''}
+        </pre>
 
         {/* Textarea Layer */}
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={(e) => onChange?.(e.target.value)}
+          onChange={(e) => {
+            setIsHighlighted(false);
+            onChange?.(e.target.value);
+          }}
           onScroll={handleScroll}
           placeholder="// paste your code here..."
           spellCheck={false}
