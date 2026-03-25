@@ -20,7 +20,8 @@
       "*.js",
       "*.jsx",
       "*.json",
-      "*.css"
+      "*.css",
+      "!drizzle"
     ]
   },
   "formatter": {
