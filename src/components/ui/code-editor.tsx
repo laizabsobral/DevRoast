@@ -13,7 +13,7 @@ import {
 
 const codeEditor = tv({
   base: [
-    'w-full min-h-[200px] overflow-hidden rounded-md border border-border-primary bg-bg-input font-mono text-sm',
+    'w-full min-h-[200px] max-h-[400px] overflow-hidden rounded-md border border-border-primary bg-bg-input font-mono text-sm',
   ],
 });
 
@@ -159,9 +159,9 @@ export function CodeEditorContent({
   }, []);
 
   return (
-    <div className={`relative flex ${className}`}>
+    <div className={`relative flex max-h-[400px] overflow-hidden ${className}`}>
       {/* Line Numbers */}
-      <div className="flex w-12 flex-col items-end border-r border-border-primary bg-bg-surface py-3 pr-3 text-xs text-text-tertiary">
+      <div className="flex w-12 flex-none flex-col items-end border-r border-border-primary bg-bg-surface py-3 pr-3 text-xs text-text-tertiary">
         {Array.from({ length: Math.max(lines, 15) }, (_, i) => (
           <span key={i} className="leading-6">
             {i + 1}
@@ -170,7 +170,7 @@ export function CodeEditorContent({
       </div>
 
       {/* Editor Area */}
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative flex-1 overflow-auto">
         {/* Highlighted Code Layer (only visible when ready) */}
         <pre
           ref={preRef}
