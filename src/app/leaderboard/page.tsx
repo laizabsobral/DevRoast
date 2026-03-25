@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CodeBlock } from '@/components/ui/code-block';
+import { CodeBlock, CodeBlockHeader } from '@/components/ui/code-block';
 
 export const metadata: Metadata = {
   title: 'shame_leaderboard | devroast',
@@ -115,16 +115,13 @@ export default function LeaderboardPage() {
 
             {/* Code Block */}
             <div className="w-[560px]">
-              <div className="flex h-10 items-center gap-3 border-b border-border-primary bg-bg-input px-4">
-                <span className="h-2.5 w-2.5 rounded-full bg-accent-red" />
-                <span className="h-2.5 w-2.5 rounded-full bg-accent-amber" />
-                <span className="h-2.5 w-2.5 rounded-full bg-accent-green" />
-                <span className="ml-auto text-xs text-text-tertiary">
-                  snippet.
-                  {entry.language === 'javascript' ? 'js' : entry.language}
-                </span>
-              </div>
-              <CodeBlock code={entry.code} language={entry.language} />
+              <CodeBlockHeader
+                filename={`snippet.${entry.language === 'javascript' ? 'js' : entry.language}`}
+              />
+              <CodeBlock
+                code={entry.code}
+                lang={entry.language as 'javascript'}
+              />
             </div>
           </div>
         ))}
