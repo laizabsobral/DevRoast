@@ -1,284 +1,181 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { tv } from 'tailwind-variants';
-import { useLanguageDetection } from '@/hooks/use-language-detection';
+import { useCallback, useMemo, useRef } from 'react';
+import { twMerge } from 'tailwind-merge';
 import { useShikiHighlighter } from '@/hooks/use-shiki-highlighter';
-import {
-  getLanguageByHljsId,
-  getLanguageName,
-  LANGUAGE_OPTIONS,
-} from '@/lib/languages';
+import { LANGUAGE_OPTIONS, LANGUAGES } from '@/lib/languages';
 
 const MAX_CHARACTERS = 2000;
 
-const codeEditor = tv({
-  base: [
-    'w-full min-h-[200px] max-h-[400px] overflow-hidden rounded-md border border-border-primary bg-bg-input font-mono text-sm',
-  ],
-});
-
-interface CodeEditorProps {
-  value?: string;
-  onChange?: (value: string) => void;
-  language?: string;
-  onLanguageChange?: (language: string) => void;
-  showLanguageSelector?: boolean;
-  showDetectedBadge?: boolean;
+type CodeEditorProps = {
+  value: string;
+  onChange: (value: string) => void;
+  language: string | null;
+  onLanguageChange?: (language: string | null) => void;
   className?: string;
-}
+};
 
-export function CodeEditorRoot({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return <div className={codeEditor({ className })}>{children}</div>;
-}
-
-export function CodeEditorFooter({
-  charCount,
-  maxCharacters = MAX_CHARACTERS,
-}: {
-  charCount: number;
-  maxCharacters?: number;
-}) {
-  const isOverLimit = charCount > maxCharacters;
-
-  return (
-    <div className="flex h-8 items-center justify-end border-t border-border-primary px-4 font-mono text-xs">
-      <span className={isOverLimit ? 'text-accent-red' : 'text-text-tertiary'}>
-        {charCount.toLocaleString()} / {maxCharacters.toLocaleString()}
-      </span>
-    </div>
-  );
-}
-
-export function CodeEditorHeader({
+function CodeEditor({
+  value,
+  onChange,
   language,
-  detectedLanguage,
   onLanguageChange,
-  showLanguageSelector = true,
-  showDetectedBadge = true,
-}: {
-  language?: string;
-  detectedLanguage?: string | null;
-  onLanguageChange?: (language: string) => void;
-  showLanguageSelector?: boolean;
-  showDetectedBadge?: boolean;
-}) {
-  const displayLanguage = language || detectedLanguage || 'plaintext';
-  const isAutoDetected = !language && !!detectedLanguage;
+  className,
+}: CodeEditorProps) {
+  const { highlight, isReady } = useShikiHighlighter();
+  const highlightedRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const displayLanguage = language
+    ? (LANGUAGES[language as keyof typeof LANGUAGES]?.name ?? language)
+    : null;
+
+  const charCount = value.length;
+  const isOverLimit = charCount > MAX_CHARACTERS;
+
+  const lines = value.split('\n');
+  const lineCount = Math.max(lines.length, 16);
+
+  // Synchronous highlight — no debounce for instant feedback
+  const highlightedHtml = useMemo(() => {
+    if (!isReady || !value) return '';
+
+    const lang = language ?? 'javascript';
+    return highlight(value, lang);
+  }, [value, language, isReady, highlight]);
+
+  // Show text visibly when highlight is not ready yet
+  const hasHighlight = isReady && (highlightedHtml as string).length > 0;
+
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
+
+  // Scroll sync: textarea -> highlighted overlay + line numbers
+  const handleScroll = useCallback(() => {
+    const textarea = textareaRef.current;
+    const highlighted = highlightedRef.current;
+    const lineNumbers = lineNumbersRef.current;
+    if (!textarea) return;
+
+    if (highlighted) {
+      highlighted.scrollTop = textarea.scrollTop;
+      highlighted.scrollLeft = textarea.scrollLeft;
+    }
+    if (lineNumbers) {
+      lineNumbers.scrollTop = textarea.scrollTop;
+    }
+  }, []);
 
   return (
-    <div className="flex h-10 items-center justify-between border-b border-border-primary px-4">
-      <div className="flex items-center gap-3">
-        <span className="h-2.5 w-2.5 rounded-full bg-accent-red" />
-        <span className="h-2.5 w-2.5 rounded-full bg-accent-amber" />
-        <span className="h-2.5 w-2.5 rounded-full bg-accent-green" />
-        {showDetectedBadge && isAutoDetected && (
-          <span className="ml-2 rounded bg-accent-green/20 px-2 py-0.5 font-mono text-[10px] text-accent-green">
-            {getLanguageName(detectedLanguage || 'plaintext')}
-          </span>
-        )}
-        {showDetectedBadge &&
-          !isAutoDetected &&
-          displayLanguage !== 'plaintext' && (
-            <span className="ml-2 rounded bg-bg-elevated px-2 py-0.5 font-mono text-[10px] text-text-tertiary">
-              {getLanguageName(displayLanguage)}
-            </span>
-          )}
-      </div>
-      {showLanguageSelector && (
-        <div className="relative">
+    <div
+      className={twMerge(
+        'border border-border-primary overflow-hidden flex flex-col',
+        className
+      )}
+    >
+      {/* Window Header */}
+      <div className="flex items-center gap-2 h-10 px-4 border-b border-border-primary">
+        <span className="size-3 rounded-full bg-accent-red" />
+        <span className="size-3 rounded-full bg-accent-amber" />
+        <span className="size-3 rounded-full bg-accent-green" />
+        <span className="flex-1" />
+
+        {/* Language selector */}
+        <div className="relative flex items-center">
           <select
-            value={language || ''}
-            onChange={(e) => onLanguageChange?.(e.target.value)}
-            className="appearance-none rounded border border-border-primary bg-bg-elevated px-3 py-1.5 pr-8 font-mono text-xs text-text-secondary focus:border-accent-green focus:outline-none focus:ring-1 focus:ring-accent-green"
+            value={language ?? 'auto'}
+            onChange={(e) => {
+              const val = e.target.value;
+              onLanguageChange?.(val === 'auto' ? null : val);
+            }}
+            className="bg-transparent font-mono text-xs text-text-secondary outline-none cursor-pointer appearance-none hover:text-text-primary transition-colors pr-5"
           >
-            <option value="">Auto-detect</option>
-            {LANGUAGE_OPTIONS.map((lang) => (
-              <option key={lang.value} value={lang.value}>
-                {lang.label}
+            <option value="auto" className="bg-bg-surface text-text-primary">
+              {displayLanguage
+                ? `${displayLanguage} (detected)`
+                : 'auto-detect'}
+            </option>
+            {LANGUAGE_OPTIONS.map((opt) => (
+              <option
+                key={opt.value}
+                value={opt.value}
+                className="bg-bg-surface text-text-primary"
+              >
+                {opt.label}
               </option>
             ))}
           </select>
-          <ChevronDown className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+          <ChevronDown className="absolute right-0 size-3.5 text-text-tertiary pointer-events-none" />
         </div>
-      )}
-    </div>
-  );
-}
-
-export function CodeEditorContent({
-  value,
-  onChange,
-  language = 'plaintext',
-  className,
-}: {
-  value?: string;
-  onChange?: (value: string) => void;
-  language?: string;
-  className?: string;
-}) {
-  const { highlight, isReady, loadLanguage } = useShikiHighlighter();
-  const [highlightedCode, setHighlightedCode] = useState('');
-  const [isHighlighted, setIsHighlighted] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const preRef = useRef<HTMLPreElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
-
-  const lines = (value || '').split('\n').length;
-
-  const doHighlight = useCallback(
-    async (code: string, lang: string) => {
-      if (!isReady || !code) {
-        setHighlightedCode('');
-        setIsHighlighted(false);
-        return;
-      }
-
-      await loadLanguage(lang);
-      const html = await highlight(code, lang);
-      setHighlightedCode(html);
-      setIsHighlighted(true);
-    },
-    [highlight, isReady, loadLanguage]
-  );
-
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    debounceRef.current = setTimeout(() => {
-      doHighlight(value || '', language);
-    }, 0);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [value, language, doHighlight]);
-
-  useEffect(() => {
-    if (value && isReady && !isHighlighted) {
-      doHighlight(value, language);
-    }
-  }, [isReady, value, language, isHighlighted, doHighlight]);
-
-  const handleScroll = useCallback(() => {
-    if (textareaRef.current && preRef.current) {
-      preRef.current.scrollTop = textareaRef.current.scrollTop;
-      preRef.current.scrollLeft = textareaRef.current.scrollLeft;
-    }
-  }, []);
-
-  return (
-    <div className={`relative flex max-h-[400px] overflow-hidden ${className}`}>
-      {/* Line Numbers */}
-      <div className="flex w-12 flex-none flex-col items-end border-r border-border-primary bg-bg-surface py-3 pr-3 text-xs text-text-tertiary">
-        {Array.from({ length: Math.max(lines, 15) }, (_, i) => (
-          <span key={i} className="leading-6">
-            {i + 1}
-          </span>
-        ))}
       </div>
 
-      {/* Editor Area */}
-      <div className="relative flex-1 overflow-auto">
-        {/* Highlighted Code Layer (only visible when ready) */}
-        <pre
-          ref={preRef}
-          className={`absolute inset-0 overflow-auto p-3 text-sm leading-6 [&_pre]:!bg-transparent [&_span]:!text-text-secondary ${
-            isHighlighted ? 'opacity-100' : 'opacity-0'
-          }`}
-          aria-hidden="true"
-          dangerouslySetInnerHTML={{ __html: highlightedCode }}
-        />
-
-        {/* Plain text fallback (visible when not highlighted) */}
-        <pre
-          className={`absolute inset-0 overflow-auto p-3 text-sm leading-6 text-text-secondary ${
-            isHighlighted ? 'opacity-0' : 'opacity-100'
-          }`}
-          aria-hidden="true"
+      {/* Code Area */}
+      <div className="flex flex-1 bg-bg-input max-h-96 overflow-hidden">
+        {/* Line Numbers */}
+        <div
+          ref={lineNumbersRef}
+          className="flex flex-col items-end gap-0 py-4 px-3 w-12 border-r border-border-primary bg-bg-surface select-none overflow-hidden"
         >
-          {value || ''}
-        </pre>
+          {Array.from({ length: lineCount }, (_, i) => (
+            <span
+              // biome-ignore lint/suspicious/noArrayIndexKey: line numbers are index-based and never reorder
+              key={i}
+              className="font-mono text-xs leading-[1.625] text-text-tertiary"
+            >
+              {i + 1}
+            </span>
+          ))}
+        </div>
 
-        {/* Textarea Layer */}
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => {
-            setIsHighlighted(false);
-            onChange?.(e.target.value);
-          }}
-          onScroll={handleScroll}
-          placeholder="// paste your code here..."
-          spellCheck={false}
-          className="absolute inset-0 h-full w-full resize-none bg-transparent p-3 font-mono text-sm leading-6 text-transparent caret-text-primary placeholder:text-text-tertiary focus:outline-none"
-          style={{ whiteSpace: 'pre' }}
-        />
+        {/* Editor overlay container */}
+        <div className="relative flex-1 min-h-80">
+          {/* Highlighted code (below) */}
+          {hasHighlight && (
+            <div
+              ref={highlightedRef}
+              aria-hidden="true"
+              className="absolute inset-0 py-4 px-4 font-mono text-xs leading-[1.625] overflow-hidden whitespace-pre pointer-events-none [tab-size:2] [&_pre]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_code]:!bg-transparent [&_.line]:leading-[1.625]"
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: shiki generates trusted HTML from code strings
+              dangerouslySetInnerHTML={{
+                __html: highlightedHtml,
+              }}
+            />
+          )}
+
+          {/* Textarea (above, transparent text when highlight is active) */}
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onScroll={handleScroll}
+            placeholder="// paste your code here..."
+            spellCheck={false}
+            autoCapitalize="off"
+            autoComplete="off"
+            autoCorrect="off"
+            className={twMerge(
+              'relative z-10 w-full h-full py-4 px-4 bg-transparent font-mono text-xs leading-[1.625] outline-none resize-none min-h-80 whitespace-pre overflow-auto [tab-size:2]',
+              hasHighlight
+                ? 'text-transparent caret-accent-green selection:bg-white/10'
+                : 'text-text-primary placeholder:text-text-tertiary caret-accent-green'
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-end h-8 px-4 border-t border-border-primary">
+        <span
+          className={twMerge(
+            'font-mono text-[10px] tabular-nums',
+            isOverLimit ? 'text-accent-red' : 'text-text-tertiary'
+          )}
+        >
+          {charCount.toLocaleString()}/{MAX_CHARACTERS.toLocaleString()}
+        </span>
       </div>
     </div>
   );
 }
 
-export function CodeEditor({
-  value,
-  onChange,
-  language,
-  onLanguageChange,
-  showLanguageSelector = true,
-  showDetectedBadge = true,
-  className,
-}: CodeEditorProps) {
-  const [mounted, setMounted] = useState(false);
-  const { language: detectedLanguage } = useLanguageDetection(
-    mounted ? value || '' : ''
-  );
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const effectiveLanguage = useMemo(() => {
-    if (language) {
-      return language;
-    }
-    if (detectedLanguage) {
-      const mapped = getLanguageByHljsId(detectedLanguage);
-      return mapped || 'plaintext';
-    }
-    return 'plaintext';
-  }, [language, detectedLanguage]);
-
-  const charCount = value?.length ?? 0;
-  const isOverLimit = charCount > MAX_CHARACTERS;
-
-  return (
-    <CodeEditorRoot className={className}>
-      <CodeEditorHeader
-        language={language}
-        detectedLanguage={mounted ? detectedLanguage : null}
-        onLanguageChange={onLanguageChange}
-        showLanguageSelector={showLanguageSelector}
-        showDetectedBadge={showDetectedBadge}
-      />
-      <CodeEditorContent
-        value={value}
-        onChange={onChange}
-        language={effectiveLanguage}
-      />
-      <CodeEditorFooter charCount={charCount} />
-    </CodeEditorRoot>
-  );
-}
-
-export { MAX_CHARACTERS };
+export { CodeEditor, type CodeEditorProps, MAX_CHARACTERS };

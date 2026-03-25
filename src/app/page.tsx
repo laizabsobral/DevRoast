@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,14 @@ import {
   TableRowScore,
 } from '@/components/ui/table-row';
 import { Toggle } from '@/components/ui/toggle';
+import { TRPCReactProvider } from '@/trpc/client';
+
+const Stats = dynamic(
+  () => import('@/components/stats').then((mod) => mod.Stats),
+  {
+    ssr: false,
+  }
+);
 
 const STATIC_LEADERBOARD = [
   {
@@ -36,6 +45,7 @@ const STATIC_LEADERBOARD = [
 
 export default function HomePage() {
   const [code, setCode] = useState('');
+  const [language, setLanguage] = useState<string | null>(null);
   const [roastMode, setRoastMode] = useState(true);
 
   return (
@@ -55,7 +65,13 @@ export default function HomePage() {
       </div>
 
       {/* Code Editor */}
-      <CodeEditor value={code} onChange={setCode} className="w-[780px]" />
+      <CodeEditor
+        value={code}
+        onChange={setCode}
+        language={language}
+        onLanguageChange={setLanguage}
+        className="w-[780px]"
+      />
 
       {/* Actions Bar */}
       <div className="flex w-[780px] items-center justify-between">
@@ -75,11 +91,9 @@ export default function HomePage() {
       </div>
 
       {/* Stats Footer */}
-      <div className="flex items-center gap-6 font-mono text-xs text-text-tertiary">
-        <span>2,847 codes roasted</span>
-        <span>·</span>
-        <span>avg score: 4.2/10</span>
-      </div>
+      <TRPCReactProvider>
+        <Stats />
+      </TRPCReactProvider>
 
       {/* Spacer */}
       <div className="h-16" />

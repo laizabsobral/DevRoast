@@ -143,7 +143,7 @@ export default function ComponentsPage() {
             >
               <CodeBlock
                 code={sampleCode}
-                language="javascript"
+                lang="javascript"
                 filename="calculate.js"
               />
             </Suspense>
