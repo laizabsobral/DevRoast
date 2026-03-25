@@ -25,21 +25,25 @@ const Stats = dynamic(
 const STATIC_LEADERBOARD = [
   {
     rank: 1,
-    score: 2.1,
-    code: 'function calculateTotal(items) { var total = 0; ...',
+    score: 1.2,
+    code: ['eval(prompt("enter code"))', 'document.write(response)'],
     language: 'javascript',
   },
   {
     rank: 2,
-    score: 2.8,
-    code: 'const result = arr.map(x ={' > '} x * 2).filter()',
-    language: 'javascript',
+    score: 1.8,
+    code: [
+      'if (x == true) { return true; }',
+      'else if (x == false) { return false; }',
+      'else { return !false; }',
+    ],
+    language: 'typescript',
   },
   {
     rank: 3,
-    score: 3.4,
-    code: 'let i = 0; while(i {' < '} 10) { console.log(i); ...',
-    language: 'javascript',
+    score: 2.1,
+    code: ['SELECT * FROM users WHERE 1=1', '-- TODO: add authentication'],
+    language: 'sql',
   },
 ];
 
@@ -99,12 +103,12 @@ export default function HomePage() {
       <div className="h-16" />
 
       {/* Leaderboard Preview - Inline */}
-      <div className="flex w-full max-w-[960px] flex-col gap-4 border border-border-primary bg-bg-surface">
+      <div className="flex w-full max-w-[960px] flex-col gap-6 border border-border-primary bg-bg-surface">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border-primary px-5 py-3">
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm font-bold text-accent-green">
-              //
+              {/**/}
             </span>
             <span className="font-mono text-sm font-bold text-text-primary">
               shame_leaderboard
@@ -112,27 +116,29 @@ export default function HomePage() {
           </div>
           <Link
             href="/leaderboard"
-            className="font-mono text-xs text-text-secondary hover:text-text-primary"
+            className="flex items-center gap-1 rounded border border-border-primary px-3 py-1.5 font-mono text-xs text-text-secondary hover:text-text-primary"
           >
             $ view_all &gt;&gt;
           </Link>
         </div>
 
         {/* Subtitle */}
-        <p className="px-5 font-mono text-xs text-text-tertiary">
-          // the worst code on the internet, ranked by shame
+        <p className="px-5 font-ibm-plex-mono text-xs text-text-tertiary">
+          {'// the worst code on the internet, ranked by shame'}
         </p>
 
         {/* Table Header */}
-        <div className="flex h-10 items-center border-b border-border-primary bg-bg-input px-5">
-          <div className="w-10 font-mono text-xs text-text-tertiary">#</div>
-          <div className="w-[60px] font-mono text-xs text-text-tertiary">
+        <div className="flex h-10 w-full items-center border-b border-border-primary bg-bg-surface px-5">
+          <div className="w-[50px] font-mono text-xs font-medium text-text-tertiary">
+            #
+          </div>
+          <div className="w-[70px] font-mono text-xs font-medium text-text-tertiary">
             score
           </div>
-          <div className="flex-1 font-mono text-xs text-text-tertiary">
+          <div className="flex-1 font-mono text-xs font-medium text-text-tertiary">
             code
           </div>
-          <div className="w-[100px] text-right font-mono text-xs text-text-tertiary">
+          <div className="w-[100px] font-mono text-xs font-medium text-text-tertiary">
             lang
           </div>
         </div>
@@ -140,25 +146,27 @@ export default function HomePage() {
         {/* Rows */}
         {STATIC_LEADERBOARD.map((row) => (
           <TableRowRoot key={row.rank}>
-            <TableRowRank>#{row.rank}</TableRowRank>
-            <TableRowScore
+            <TableRowRank
               className={
-                row.score >= 7
-                  ? 'text-accent-green'
-                  : row.score >= 4
-                    ? 'text-accent-amber'
-                    : 'text-accent-red'
+                row.rank === 1 ? 'text-accent-amber' : 'text-text-secondary'
               }
             >
-              {row.score.toFixed(1)}
-            </TableRowScore>
-            <TableRowCode>{row.code}</TableRowCode>
+              {row.rank}
+            </TableRowRank>
+            <TableRowScore>{row.score.toFixed(1)}</TableRowScore>
+            <TableRowCode>
+              {row.code.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </TableRowCode>
             <TableRowLang>{row.language}</TableRowLang>
           </TableRowRoot>
         ))}
 
         {/* Footer */}
-        <p className="px-5 py-4 text-center font-mono text-xs text-text-tertiary">
+        <div className="flex justify-center px-0 py-4 font-ibm-plex-mono text-xs text-text-tertiary">
           showing top 3 of 2,847 ·{' '}
           <Link
             href="/leaderboard"
@@ -166,7 +174,7 @@ export default function HomePage() {
           >
             view full leaderboard &gt;&gt;
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   );

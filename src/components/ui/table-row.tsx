@@ -1,23 +1,23 @@
 import { tv } from 'tailwind-variants';
 
 const tableRow = tv({
-  base: ['flex items-center border-b border-border-primary px-5 py-4'],
+  base: ['flex w-full items-center border-b border-border-primary px-5 py-4'],
 });
 
 const rankCell = tv({
-  base: ['w-10 font-mono text-sm text-text-tertiary'],
+  base: ['w-[50px] font-mono text-xs text-text-secondary'],
 });
 
 const scoreCell = tv({
-  base: ['w-[60px] font-mono text-sm font-bold'],
+  base: ['w-[70px] font-mono text-xs font-bold text-accent-red'],
 });
 
 const codeCell = tv({
-  base: ['flex-1 font-mono text-xs text-text-secondary truncate'],
+  base: ['flex flex-1 flex-col gap-0.5 font-mono text-xs text-text-primary'],
 });
 
 const langCell = tv({
-  base: ['w-[100px] font-mono text-xs text-text-tertiary text-right'],
+  base: ['w-[100px] font-mono text-xs text-text-secondary'],
 });
 
 export function TableRowRoot({
@@ -70,4 +70,4 @@ export function TableRowLang({
   return <div className={langCell({ className })}>{children}</div>;
 }
 
-export { tableRow, rankCell, scoreCell, codeCell, langCell };
+export { codeCell, langCell, rankCell, scoreCell, tableRow };
