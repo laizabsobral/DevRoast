@@ -1,13 +1,12 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CodeEditor } from '@/components/ui/code-editor';
 import { Toggle } from '@/components/ui/toggle';
-import { TRPCReactProvider, useTRPC } from '@/trpc/client';
+import { TRPCReactProvider } from '@/trpc/client';
 
 const Stats = dynamic(
   () => import('@/components/stats').then((mod) => mod.Stats),
@@ -31,15 +30,18 @@ const LeaderboardSkeleton = dynamic(
   }
 );
 
-export default function HomePage() {
+function RoastForm() {
   const router = useRouter();
-  const trpc = useTRPC();
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState<string | null>(null);
   const [roastMode, setRoastMode] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const createRoastMutation = useMutation({
-    mutationFn: async () => {
+  const handleSubmit = async () => {
+    if (!code) return;
+
+    setIsLoading(true);
+    try {
       const response = await fetch('/api/trpc/roast.createRoast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,29 +52,16 @@ export default function HomePage() {
         }),
       });
       if (!response.ok) throw new Error('Failed to create roast');
-      return response.json();
-    },
-    onSuccess: (data) => {
+      const data = await response.json();
       router.push(`/roast/${data.result.data.json.id}`);
-    },
-  });
+    } catch (error) {
+      console.error('Failed to create roast:', error);
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="flex w-full flex-col items-center gap-8 pb-16">
-      {/* Hero Section */}
-      <div className="flex flex-col items-center gap-3 text-center">
-        <h1 className="flex items-center gap-3 font-mono text-3xl font-bold">
-          <span className="text-accent-green">$</span>
-          <span className="text-text-primary">
-            paste your code. get roasted.
-          </span>
-        </h1>
-        <p className="font-mono text-sm text-text-secondary">
-          // drop your code below and we&apos;ll rate it — brutally honest or
-          full roast mode
-        </p>
-      </div>
-
+    <>
       {/* Code Editor */}
       <CodeEditor
         value={code}
@@ -97,15 +86,35 @@ export default function HomePage() {
         <Button
           variant="green"
           size="lg"
-          disabled={!code || createRoastMutation.isPending}
-          onClick={() => createRoastMutation.mutate()}
+          disabled={!code || isLoading}
+          onClick={handleSubmit}
         >
-          {createRoastMutation.isPending ? '$ roasting...' : '$ roast_my_code'}
+          {isLoading ? '$ roasting...' : '$ roast_my_code'}
         </Button>
       </div>
+    </>
+  );
+}
 
-      {/* Stats Footer */}
+export default function HomePage() {
+  return (
+    <div className="flex w-full flex-col items-center gap-8 pb-16">
+      {/* Hero Section */}
+      <div className="flex flex-col items-center gap-3 text-center">
+        <h1 className="flex items-center gap-3 font-mono text-3xl font-bold">
+          <span className="text-accent-green">$</span>
+          <span className="text-text-primary">
+            paste your code. get roasted.
+          </span>
+        </h1>
+        <p className="font-mono text-sm text-text-secondary">
+          // drop your code below and we&apos;ll rate it — brutally honest or
+          full roast mode
+        </p>
+      </div>
+
       <TRPCReactProvider>
+        <RoastForm />
         <Stats />
       </TRPCReactProvider>
 

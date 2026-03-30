@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { CodeBlock, CodeBlockHeader } from '@/components/ui/code-block';
+import { createCaller } from '@/trpc/caller';
 
 export const metadata: Metadata = {
   title: 'shame_leaderboard | devroast',
@@ -7,60 +8,19 @@ export const metadata: Metadata = {
     'The most roasted code on the internet. Browse the worst submissions ranked by shame.',
 };
 
-const STATIC_LEADERBOARD = [
-  {
-    rank: 1,
-    score: 2.1,
-    code: `function calculateTotal(items) {
-  var total = 0;
-  for (var i = 0; i < items.length; i++) {
-    total = total + items[i].price;
-  }
-  return total;
-}`,
-    language: 'javascript',
-  },
-  {
-    rank: 2,
-    score: 2.8,
-    code: `const result = arr.map(x => {
-  return x * 2
-}).filter(x => x > 10)`,
-    language: 'javascript',
-  },
-  {
-    rank: 3,
-    score: 3.4,
-    code: `let i = 0;
-while(i < 10) {
-  console.log(i);
-  i++;
-}`,
-    language: 'javascript',
-  },
-  {
-    rank: 4,
-    score: 4.1,
-    code: `function getData() {
-  const data = fetch('/api/data').then(res => res.json());
-  return data;
-}`,
-    language: 'javascript',
-  },
-  {
-    rank: 5,
-    score: 4.8,
-    code: `class User {
-  constructor(name, email) {
-    this.name = name;
-    this.email = email;
-  }
-}`,
-    language: 'javascript',
-  },
-];
+async function getLeaderboard() {
+  const caller = await createCaller();
+  return caller.roast.getLeaderboard({ page: 1, limit: 20 });
+}
 
-export default function LeaderboardPage() {
+export default async function LeaderboardPage() {
+  const { entries, pagination } = await getLeaderboard();
+
+  const avgScore =
+    entries.length > 0
+      ? entries.reduce((sum, e) => sum + e.score, 0) / entries.length
+      : 0;
+
   return (
     <div className="flex w-full flex-col gap-10 pb-16">
       {/* Hero Section */}
@@ -77,17 +37,17 @@ export default function LeaderboardPage() {
           {'// the most roasted code on the internet'}
         </p>
         <div className="flex items-center gap-2 font-mono text-xs text-text-tertiary">
-          <span>2,847 submissions</span>
+          <span>{pagination.totalCount.toLocaleString()} submissions</span>
           <span>·</span>
-          <span>avg score: 4.2/10</span>
+          <span>avg score: {avgScore.toFixed(1)}/10</span>
         </div>
       </div>
 
       {/* Leaderboard Entries */}
       <div className="flex flex-col gap-5">
-        {STATIC_LEADERBOARD.map((entry) => (
+        {entries.map((entry) => (
           <div
-            key={entry.rank}
+            key={entry.id}
             className="flex flex-col border border-border-primary"
           >
             {/* Meta Row */}
@@ -116,7 +76,9 @@ export default function LeaderboardPage() {
             {/* Code Block */}
             <div className="w-[560px]">
               <CodeBlockHeader
-                filename={`snippet.${entry.language === 'javascript' ? 'js' : entry.language}`}
+                filename={`snippet.${
+                  entry.language === 'javascript' ? 'js' : entry.language
+                }`}
               />
               <CodeBlock
                 code={entry.code}

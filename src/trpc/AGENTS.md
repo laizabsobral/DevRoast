@@ -106,6 +106,26 @@ export const roastRouter = createTRPCRouter({
 });
 ```
 
+### Múltiplas Queries
+
+Usar `Promise.all` para executar queries em paralelo:
+
+```typescript
+getLeaderboard: baseProcedure
+  .input(z.object({ limit: z.number().default(3) }))
+  .query(async ({ ctx, input }) => {
+    const [stats, entries] = await Promise.all([
+      ctx.db.select({ totalCount: count() }).from(roasts),
+      ctx.db.select(...).from(roasts).orderBy(...).limit(input.limit),
+    ]);
+
+    return {
+      totalCount: Number(stats[0]?.totalCount) ?? 0,
+      entries: entries.map(e => ({ ... })),
+    };
+  }),
+```
+
 ## Erros Comuns
 
 1. **"server-only" import error**: Não importar `server-only` modules em client components
