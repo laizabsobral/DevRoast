@@ -30,3 +30,15 @@ Named exports apenas.
 
 - Preferir classes utilitárias Tailwind
 - Usar tokens do tema (cores no tailwind config)
+
+## CodeBlock
+
+- Props: `code`, `lang` (não `language`), `filename?`, `className?`
+- Usar `lang` como nome da prop para linguagem
+- Suporta `BundledLanguage` do Shiki
+
+## CodeEditor
+
+- Props: `value`, `onChange`, `language`, `onLanguageChange?`, `className?`
+- `language` deve ser `string | null`
+- Usar `language as keyof typeof LANGUAGES` para indexar objetos de linguagens

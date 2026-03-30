@@ -8,6 +8,9 @@ Next.js 15 com App Router, Tailwind CSS, TypeScript.
 
 - `src/app/` - rotas e páginas
 - `src/components/ui/` - componentes reutilizáveis
+- `src/trpc/` - configuração tRPC e routers
+- `src/db/` - schema e configuração Drizzle
+- `specs/` - especificações de features
 
 ## Padrões
 
@@ -22,6 +25,8 @@ Next.js 15 com App Router, Tailwind CSS, TypeScript.
 - `npm run build` - build produção
 - `npm run lint` - lint
 - `npm run format` - formatação
+- `npm run db:generate` - gerar migrations Drizzle
+- `npm run db:migrate` - aplicar migrations
 
 ## Editor
 
@@ -30,3 +35,11 @@ Next.js 15 com App Router, Tailwind CSS, TypeScript.
 - Textarea overlay com highlight em tempo real
 - Auto-detecção de linguagem via highlight.js (pendente)
 - Scroll sync entre textarea e div de highlight
+
+## tRPC
+
+- Usar `src/trpc/` para toda configuração
+- Estrutura: `init.ts`, `routers/`, `client.tsx`, `server.tsx`
+- Provider deve ser importado com `dynamic` + `ssr: false` para evitar erros de SSR
+- Consultas simples podem usar `0` como valor inicial + NumberFlow para animação
+- Usar `useQuery` diretamente no cliente (não prefetch em server)
