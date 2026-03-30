@@ -1,57 +1,30 @@
 import type { Metadata } from 'next';
+import { cacheTag } from 'next/cache';
 import { Suspense } from 'react';
 import { CodeBlock } from '@/components/ui/code-block';
+import { createCaller } from '@/trpc/caller';
 
 export const metadata: Metadata = {
   title: 'Roast Result | devroast',
   description: 'Your code has been roasted. See the results.',
 };
 
-const STATIC_ROAST = {
-  id: '550e8400-e29b-41d4-a716-446655440000',
-  score: 4.2,
-  summary:
-    'This code is a masterpiece of confusion. Variable names are meaningless, logic is convoluted, and error handling is nonexistent. The ternary operator abuse alone deserves a medal.',
-  language: 'javascript',
-  code: `function calculateTotal(items) {
-  var total = 0;
-  for (var i = 0; i < items.length; i++) {
-    total = total + items[i].price;
-  }
-  return total;
-}`,
-  issues: [
-    {
-      severity: 'high',
-      title: 'Variable Naming',
-      description:
-        'Single-letter variable names make the code unreadable. Use descriptive names like "itemIndex" instead of "i".',
-    },
-    {
-      severity: 'high',
-      title: 'No Error Handling',
-      description:
-        'This function will crash if items is null/undefined or if any item lacks a price property.',
-    },
-    {
-      severity: 'medium',
-      title: 'Outdated Syntax',
-      description:
-        'Using "var" instead of "const" or "let" leads to hoisting issues and confusing scope.',
-    },
-    {
-      severity: 'low',
-      title: 'Missing Type Safety',
-      description:
-        'No TypeScript types defined. Consider adding interfaces for better maintainability.',
-    },
-  ],
-  suggestedFix: `function calculateTotal(items: { price: number }[]): number {
-  return items.reduce((total, item) => total + item.price, 0);
-}`,
-};
+async function getRoast(id: string) {
+  'use cache';
+  cacheTag(`roast-${id}`);
 
-export default async function RoastPage() {
+  const caller = await createCaller();
+  return caller.roast.getRoastById({ id });
+}
+
+export default async function RoastPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const roast = await getRoast(id);
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <div className="flex w-full flex-col gap-10 pb-16">
@@ -60,14 +33,14 @@ export default async function RoastPage() {
           <div className="flex h-[180px] w-[180px] items-center justify-center rounded-full border-[12px] border-border-primary">
             <span
               className={`font-mono text-5xl font-bold ${
-                STATIC_ROAST.score >= 7
+                roast.score >= 7
                   ? 'text-accent-green'
-                  : STATIC_ROAST.score >= 4
+                  : roast.score >= 4
                     ? 'text-accent-amber'
                     : 'text-accent-red'
               }`}
             >
-              {STATIC_ROAST.score.toFixed(1)}
+              {roast.score.toFixed(1)}
             </span>
           </div>
           <div className="flex flex-col gap-3">
@@ -75,7 +48,7 @@ export default async function RoastPage() {
               Roast Complete
             </h1>
             <p className="max-w-lg font-mono text-sm text-text-secondary">
-              {STATIC_ROAST.summary}
+              {roast.summary}
             </p>
           </div>
         </div>
@@ -97,14 +70,12 @@ export default async function RoastPage() {
               <span className="h-2.5 w-2.5 rounded-full bg-accent-green" />
               <span className="ml-auto text-xs text-text-tertiary">
                 snippet.
-                {STATIC_ROAST.language === 'javascript'
-                  ? 'js'
-                  : STATIC_ROAST.language}
+                {roast.language === 'javascript' ? 'js' : roast.language}
               </span>
             </div>
             <CodeBlock
-              code={STATIC_ROAST.code}
-              lang={STATIC_ROAST.language as any}
+              code={roast.code}
+              lang={(roast.language || 'javascript') as any}
             />
           </div>
         </div>
@@ -120,7 +91,7 @@ export default async function RoastPage() {
             </span>
           </div>
           <div className="flex flex-col gap-5">
-            {STATIC_ROAST.issues.map((issue, index) => (
+            {roast.issues.map((issue, index) => (
               <div
                 key={index}
                 className="flex flex-col gap-2 rounded-md border border-border-primary p-4"
@@ -128,9 +99,9 @@ export default async function RoastPage() {
                 <div className="flex items-center gap-2">
                   <span
                     className={`h-2 w-2 rounded-full ${
-                      issue.severity === 'high'
+                      issue.severity === 'critical'
                         ? 'bg-accent-red'
-                        : issue.severity === 'medium'
+                        : issue.severity === 'warning'
                           ? 'bg-accent-amber'
                           : 'bg-accent-green'
                     }`}
@@ -166,7 +137,10 @@ export default async function RoastPage() {
                 snippet.ts
               </span>
             </div>
-            <CodeBlock code={STATIC_ROAST.suggestedFix} lang="typescript" />
+            <CodeBlock
+              code={roast.suggestedFix || '// No suggested fix available'}
+              lang="typescript"
+            />
           </div>
         </div>
       </div>
